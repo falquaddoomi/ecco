@@ -38,7 +38,7 @@ jobs:
       run: |-
           # since we just need a shared pg secret, we'll randomly generate
           # one here
-          LC_ALL=C echo "POSTGRES_PASSWORD=$( tr -dc '[a-zA-Z0-9]' < /dev/urandom | head -c 13; echo )" >> $GITHUB_ENV
+          export POSTGRES_PASSWORD=$( LC_ALL=C tr -dc '[a-zA-Z0-9]' < /dev/urandom | head -c 13; echo )
 
           # write it all out to .env
           cat <<EOF > .env
