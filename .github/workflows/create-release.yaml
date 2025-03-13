@@ -82,10 +82,14 @@ jobs:
           # by date, taking the most recent file
           mkdir -p /tmp/release/
           cd ./db-exports/
-          cp $( ls -t . | head -n 1 ) /tmp/release/
+          export RELEASE_DB_DUMP=$( ls -t . | head -n 1 )
+          cp ${RELEASE_DB_DUMP} /tmp/release/
+
+          # write out the RELEASE_DB_DUMP to the environment
+          echo "RELEASE_DB_DUMP=${RELEASE_DB_DUMP}" >> $GITHUB_ENV
 
     - name: Create release
       env:
         GH_TOKEN: ${{ github.token }}
       run: |-
-          gh release create $( date +%Y-%m-%d ) /tmp/release/
+          gh release create $( date +%Y-%m-%d ) /tmp/release/${RELEASE_DB_DUMP}
