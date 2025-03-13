@@ -13,6 +13,7 @@ on:
   schedule:
     - cron: '0 0 3 * *'
 
+
 jobs:
   create_release:
     runs-on: 'ubuntu-latest'
@@ -25,29 +26,45 @@ jobs:
       POSTGRES_PORT: "5432"
       POSTGRES_HOST: "db"
       MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+  
+    # I need "packages: write" to access GHCR.
+    # More about permissions here: https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+    permissions: write-all
 
     steps:
     - uses: 'actions/checkout@v4'
 
-    - name: Set up Docker Compose
-      uses: docker/setup-compose-action@v1
-
-    - name: Create random postgres db password
+    - name: Write .env file with random pg password, other essentials
       run: |-
           # since we just need a shared pg secret, we'll randomly generate
           # one here
           LC_ALL=C echo "POSTGRES_PASSWORD=$( tr -dc '[a-zA-Z0-9]' < /dev/urandom | head -c 13; echo )" >> $GITHUB_ENV
 
           # write it all out to .env
-          cat <<EOF
+          cat <<EOF > .env
           POSTGRES_DATABASE="${POSTGRES_DATABASE}"
           POSTGRES_USER="${POSTGRES_USER}"
           POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
           POSTGRES_PORT="${POSTGRES_PORT}"
           POSTGRES_HOST="${POSTGRES_HOST}"
-          MAPS_API_KEY="${{ secrets.MAPS_API_KEY }}"
-          EOF > .env
-          
+          MAPS_API_KEY="${MAPS_API_KEY}"
+          EOF
+
+    - name: Set up Docker Compose
+      uses: docker/setup-compose-action@v1
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: docker/bake-action@v6
+      with:
+        push: false
+        load: true
+        files: |-
+          docker-compose.yml
+          docker-compose-cache.json
+
     # Enable tmate debugging of manually-triggered workflows if the input option was provided
     - name: Setup tmate session
       uses: mxschmitt/action-tmate@v3

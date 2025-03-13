@@ -1,0 +1,26 @@
+{
+    "target": {
+      "backend": {
+        "cache-from": [
+          "type=gha,scope=colorad-cancer-center/ecco/backend"
+        ],
+        "cache-to": [
+          "type=gha,mode=max,scope=colorad-cancer-center/ecco/backend"
+        ],
+        "output": [
+          "type=docker"
+        ]
+      },
+      "db": {
+        "cache-from": [
+          "type=gha,scope=colorad-cancer-center/ecco/db"
+        ],
+        "cache-to": [
+          "type=gha,mode=max,scope=colorad-cancer-center/ecco/db"
+        ],
+        "output": [
+          "type=docker"
+        ]
+      }
+   }
+}
