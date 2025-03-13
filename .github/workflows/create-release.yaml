@@ -47,8 +47,7 @@ jobs:
       run: |-
           touch .env
           cd ./data/pipeline
-          NONINTERACTIVE=1 FORCE_ACQUIRE_RELEASE=1 FORCE_DELETE_DB_BEFORE_IMPORT=1 \
-            ./produce_release.sh
+          ./produce_release.sh
 
 
     - name: Copy dump to releases

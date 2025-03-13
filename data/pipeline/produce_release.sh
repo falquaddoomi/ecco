@@ -66,13 +66,25 @@ wait_for_container_healthy() {
     done
 }
 
+# set up env var collection to pass into the backend during the pipeline
+# run and loading data into the database
+ENV_VARS=$(
+    tr '\n' ' ' <<EOF
+-e POSTGRES_DATABASE="${POSTGRES_DATABASE}"
+-e POSTGRES_USER="${POSTGRES_USER}"
+-e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+-e POSTGRES_PORT="${POSTGRES_PORT}"
+-e POSTGRES_HOST="${POSTGRES_HOST}"
+-e MAPS_API_KEY="${MAPS_API_KEY}"
+EOF
+)
 
 # -----------------------------------------------------------------------------
 # --- stage 1. grab the requisite data for the release
 # -----------------------------------------------------------------------------
 
 # if we haven't been forced to create a release, ask the user if they'd like to
-if [ "${ACQUIRE_RELEASE}" = "0" ] || [ "${NONINTERACTIVE}" = "1" ]; then
+if [ "${ACQUIRE_RELEASE}" = "0" ] && [ "${NONINTERACTIVE}" = "0" ]; then
     read -p "Do you want to obtain a new release before importing data? (y/n) " -n 1 -r ; echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         ACQUIRE_RELEASE=1
@@ -87,7 +99,7 @@ if [ "${ACQUIRE_RELEASE}" = "1" ]; then
 
     # execute snakemake from /data/pipeline, which will write a new staging
     # release into /data/staging/<YYYY-MM-DD>
-    docker compose exec -T backend /bin/bash -s <<-EOF
+    docker compose exec ${ENV_VARS} -T backend /bin/bash -s <<-EOF
         cd /data/pipeline
         snakemake --cores all
 EOF
@@ -106,7 +118,7 @@ echo "  - Latest staging folder date: ${LATEST_STAGING}"
 
 # if they haven't forced it already, ask the user if they want to purge the
 # database before import
-if [ "${DELETE_DB_BEFORE_IMPORT}" = "0" ] || [" ${NONINTERACTIVE}" = "1" ]; then
+if [ "${DELETE_DB_BEFORE_IMPORT}" = "0" ] && [" ${NONINTERACTIVE}" = "0" ]; then
     read -p "Do you want to purge the database before importing data? (y/n) " -n 1 -r ; echo
 
     if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -135,7 +147,7 @@ wait_for_container_healthy backend
 # (this may report issues if the database is already populated, but all the ones
 # i've seen so far are warnings that can be ignored. it's safest to start with
 # an empty database if possible, in any case.)
-docker compose exec -T backend /bin/bash -s <<EOF
+docker compose exec ${ENV_VARS} -T backend /bin/bash -s <<EOF
 cd /app
 ./commands/add_us_states.py 
 ./commands/import_cif_data.py --warn-on-missing-model True /data/staging/${LATEST_STAGING}/cif/stats/
@@ -150,7 +162,7 @@ EOF
 
 # get into the database and make a new dump, which will be saved in /db-exports
 # and loaded automatically by the database container on its next boot
-docker compose exec -T db /bin/bash -s <<EOF
+docker compose exec ${ENV_VARS} -T db /bin/bash -s <<EOF
 cd /db-exports
 FORCE_OVERWRITE=1 ./make_db_export.sh
 EOF
