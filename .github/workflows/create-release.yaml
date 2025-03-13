@@ -16,17 +16,15 @@ on:
 jobs:
   create_release:
     runs-on: 'ubuntu-latest'
-
-    # the pipeline needs to do the following:
-    # 1. check out the repo
-    # 2. set up docker with docker compose
-    # 3. set the following env vars:
-    #    - NONINTERACTIVE=1
-    #    - FORCE_ACQUIRE_RELEASE=1
-    #    - FORCE_DELETE_DB_BEFORE_IMPORT=1
-    # 3. run the script ./data/pipeline/produce_release.sh
-    # 4. copy the latest dump from /db-exports/ to /releases/
-    # 5. create a new release on the repo with the dump as an asset
+    env:
+      NONINTERACTIVE: 1
+      FORCE_ACQUIRE_RELEASE: 1
+      FORCE_DELETE_DB_BEFORE_IMPORT: 1
+      POSTGRES_DATABASE: "ecco"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PORT: "5432"
+      POSTGRES_HOST: "db"
+      MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
 
     steps:
     - uses: 'actions/checkout@v4'
@@ -46,15 +44,6 @@ jobs:
       if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
   
     - name: Produce release
-      env:
-        NONINTERACTIVE: 1
-        FORCE_ACQUIRE_RELEASE: 1
-        FORCE_DELETE_DB_BEFORE_IMPORT: 1
-        POSTGRES_DATABASE: "ecco"
-        POSTGRES_USER: "postgres"
-        POSTGRES_PORT: "5432"
-        POSTGRES_HOST: "db"
-        MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
       run: |-
           cd ./data/pipeline
           ./produce_release.sh
