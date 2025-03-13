@@ -40,7 +40,7 @@ wait_for_container_healthy() {
     CONTAINER_ID=$( docker compose ps -q ${CONTAINER_NAME} )
 
     # optional args: polling interval, number of retries
-    POLL_SECS=${2:-1}
+    POLL_SECS=${2:-3}
     RETRIES=${3:-60}
     RETRIES_LEFT=${RETRIES}
 
