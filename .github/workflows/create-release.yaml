@@ -4,6 +4,12 @@ name: Create Monthly ECCO Release
 # via the workflow_dispatch event
 on:
   workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
+        required: false
+        default: false
   schedule:
     - cron: '0 0 3 * *'
 
@@ -34,6 +40,11 @@ jobs:
           echo "FORCE_ACQUIRE_RELEASE=1" >> $GITHUB_ENV
           echo "FORCE_DELETE_DB_BEFORE_IMPORT=1" >> $GITHUB_ENV
 
+    # Enable tmate debugging of manually-triggered workflows if the input option was provided
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+  
     - name: Produce release
       run: |-
           cd ./data/pipeline
