@@ -38,6 +38,16 @@ jobs:
           # one here
           LC_ALL=C echo "POSTGRES_PASSWORD=$( tr -dc '[a-zA-Z0-9]' < /dev/urandom | head -c 13; echo )" >> $GITHUB_ENV
 
+          # write it all out to .env
+          cat <<EOF
+          POSTGRES_DATABASE="${POSTGRES_DATABASE}"
+          POSTGRES_USER="${POSTGRES_USER}"
+          POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+          POSTGRES_PORT="${POSTGRES_PORT}"
+          POSTGRES_HOST="${POSTGRES_HOST}"
+          MAPS_API_KEY="${{ secrets.MAPS_API_KEY }}"
+          EOF > .env
+          
     # Enable tmate debugging of manually-triggered workflows if the input option was provided
     - name: Setup tmate session
       uses: mxschmitt/action-tmate@v3
@@ -45,7 +55,6 @@ jobs:
   
     - name: Produce release
       run: |-
-          touch .env
           cd ./data/pipeline
           ./produce_release.sh
 

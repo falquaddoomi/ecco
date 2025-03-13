@@ -66,19 +66,6 @@ wait_for_container_healthy() {
     done
 }
 
-# set up env var collection to pass into the backend during the pipeline
-# run and loading data into the database
-ENV_VARS=$(
-    tr '\n' ' ' <<EOF
--e POSTGRES_DATABASE="${POSTGRES_DATABASE}"
--e POSTGRES_USER="${POSTGRES_USER}"
--e POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
--e POSTGRES_PORT="${POSTGRES_PORT}"
--e POSTGRES_HOST="${POSTGRES_HOST}"
--e MAPS_API_KEY="${MAPS_API_KEY}"
-EOF
-)
-
 # -----------------------------------------------------------------------------
 # --- stage 1. grab the requisite data for the release
 # -----------------------------------------------------------------------------
@@ -99,7 +86,7 @@ if [ "${ACQUIRE_RELEASE}" = "1" ]; then
 
     # execute snakemake from /data/pipeline, which will write a new staging
     # release into /data/staging/<YYYY-MM-DD>
-    docker compose exec ${ENV_VARS} -T backend /bin/bash -s <<-EOF
+    docker compose exec -T backend /bin/bash -s <<-EOF
         cd /data/pipeline
         snakemake --cores all
 EOF
@@ -147,7 +134,7 @@ wait_for_container_healthy backend
 # (this may report issues if the database is already populated, but all the ones
 # i've seen so far are warnings that can be ignored. it's safest to start with
 # an empty database if possible, in any case.)
-docker compose exec ${ENV_VARS} -T backend /bin/bash -s <<EOF
+docker compose exec -T backend /bin/bash -s <<EOF
 cd /app
 ./commands/add_us_states.py 
 ./commands/import_cif_data.py --warn-on-missing-model True /data/staging/${LATEST_STAGING}/cif/stats/
@@ -162,7 +149,7 @@ EOF
 
 # get into the database and make a new dump, which will be saved in /db-exports
 # and loaded automatically by the database container on its next boot
-docker compose exec ${ENV_VARS} -T db /bin/bash -s <<EOF
+docker compose exec -T db /bin/bash -s <<EOF
 cd /db-exports
 FORCE_OVERWRITE=1 ./make_db_export.sh
 EOF
