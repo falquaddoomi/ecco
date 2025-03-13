@@ -34,11 +34,11 @@ jobs:
     - name: Set up Docker Compose
       uses: docker/setup-compose-action@v1
 
-    - name: Set up env vars
+    - name: Create random postgres db password
       run: |-
-          echo "NONINTERACTIVE=1" >> $GITHUB_ENV
-          echo "FORCE_ACQUIRE_RELEASE=1" >> $GITHUB_ENV
-          echo "FORCE_DELETE_DB_BEFORE_IMPORT=1" >> $GITHUB_ENV
+          # since we just need a shared pg secret, we'll randomly generate
+          # one here
+          echo "POSTGRES_PASSWORD=$( LC_ALL=C tr -dc '[a-zA-Z0-9]' </dev/urandom | head -c 13; echo )" >> $GITHUB_ENV
 
     # Enable tmate debugging of manually-triggered workflows if the input option was provided
     - name: Setup tmate session
@@ -46,9 +46,19 @@ jobs:
       if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
   
     - name: Produce release
+      env:
+        NONINTERACTIVE: 1
+        FORCE_ACQUIRE_RELEASE: 1
+        FORCE_DELETE_DB_BEFORE_IMPORT: 1
+        POSTGRES_DATABASE: "ecco"
+        POSTGRES_USER: "postgres"
+        POSTGRES_PORT: "5432"
+        POSTGRES_HOST: "db"
+        MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
       run: |-
           cd ./data/pipeline
           ./produce_release.sh
+
 
     - name: Copy dump to releases
       run: |-
