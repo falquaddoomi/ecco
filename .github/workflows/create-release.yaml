@@ -80,7 +80,9 @@ jobs:
       run: |-
           # list the /db-exports folder and sort
           # by date, taking the most recent file
-          cp $( ls -t /db-exports/ | head -n 1 ) /tmp/release/
+          mkdir -p /tmp/release/
+          cd ./db-exports/
+          cp $( ls -t . | head -n 1 ) /tmp/release/
 
     - name: Create release
       run: |-
