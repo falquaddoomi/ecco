@@ -36,10 +36,14 @@ jobs:
       POSTGRES_PORT: "5432"
       POSTGRES_HOST: "db"
       MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
+      CURDATE: ""
   
-    # I need "packages: write" to access GHCR.
-    # More about permissions here: https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
-    permissions: write-all
+    # we need to be able to publish GH images, releases, and to create PRs
+    # in this workflow
+    permissions:
+      packages: write
+      contents: write
+      pull-requests: write
 
     steps:
     - uses: 'actions/checkout@v4'
@@ -105,22 +109,40 @@ jobs:
       run: |-
           gh release create $( date +%Y-%m-%d ) /tmp/release/${RELEASE_DB_DUMP}
 
-    - name: Create PR with the release database dump, for testing
+    # - name: Create PR with the release database dump, for testing
+    #   if: ${{ github.event.inputs.create_release_pr == 'true' }}
+    #   env:
+    #     GH_TOKEN: ${{ github.token }}
+    #   run: |-
+    #       # create a branch, add ./db-exports/${RELEASE_DB_DUMP}
+    #       # and create a PR for it
+    #       export CURDATE=$( date +%Y-%m-%d )
+    #       export RELEASE_BRANCH="release-dump-${CURDATE}"
+
+    #       git checkout -b ${RELEASE_BRANCH}
+    #       git add ./db-exports/${RELEASE_DB_DUMP}
+    #       git commit -m "Add database dump for ${CURDATE} release"
+    #       git push origin ${RELEASE_BRANCH}
+
+    #       gh pr create \
+    #         --title "Release database dump for ${CURDATE}" \
+    #         --body "This PR contains the database dump for the ${CURDATE} release." \
+    #         --base ${RELEASE_BRANCH}
+
+    - name: Add YYYY-mm-dd to the environment as CURDATE
+      run: |
+        export TZ=America/Denver
+        echo "CURDATE=$( date +%Y-%m-%d )" >> $GITHUB_ENV
+
+    - name: Create Pull Request
       if: ${{ github.event.inputs.create_release_pr == 'true' }}
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |-
-          # create a branch, add ./db-exports/${RELEASE_DB_DUMP}
-          # and create a PR for it
-          export CURDATE=$( date +%Y-%m-%d )
-          export RELEASE_BRANCH="release-dump-${CURDATE}"
-
-          git checkout -b ${RELEASE_BRANCH}
-          git add ./db-exports/${RELEASE_DB_DUMP}
-          git commit -m "Add database dump for ${CURDATE} release"
-          git push origin ${RELEASE_BRANCH}
-
-          gh pr create \
-            --title "Release database dump for ${CURDATE}" \
-            --body "This PR contains the database dump for the ${CURDATE} release." \
-            --base ${RELEASE_BRANCH}
+      uses: peter-evans/create-pull-request@v7
+      with:
+        commit-message: 'Add database dump for ${{ env.CURDATE }} release'
+        title: 'Release database dump for ${{ env.CURDATE }}'
+        body: 'This PR contains the database dump for the ${{ env.CURDATE }} release.'
+        branch: 'release-dump-${{ env.CURDATE }}'
+        base: 'main'
+        labels: 'release'
+        draft: false
+        add-paths: "./db-exports/"
