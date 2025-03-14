@@ -142,7 +142,6 @@ jobs:
         title: 'Release database dump for ${{ env.CURDATE }}'
         body: 'This PR contains the database dump for the ${{ env.CURDATE }} release.'
         branch: 'release-dump-${{ env.CURDATE }}'
-        base: 'main'
         labels: 'release'
-        draft: false
+        draft: true
         add-paths: "./db-exports/"
