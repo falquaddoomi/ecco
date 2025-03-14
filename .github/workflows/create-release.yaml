@@ -1,10 +1,20 @@
-name: Create Monthly ECCO Release
+name: Create Monthly ECCO Database
 
 # run both every month on the 3rd and also
 # via the workflow_dispatch event
 on:
   workflow_dispatch:
     inputs:
+      create_release:
+        type: boolean
+        description: 'Publish the ECCO database dump as a GH release'
+        required: false
+        default: false
+      create_release_pr:
+        type: boolean
+        description: 'Create a PR that includes the new dump'
+        required: false
+        default: true
       debug_enabled:
         type: boolean
         description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
@@ -61,6 +71,7 @@ jobs:
       with:
         push: false
         load: true
+        targets: backend,db
         files: |-
           docker-compose.yml
           docker-compose-cache.json
@@ -75,7 +86,6 @@ jobs:
           cd ./data/pipeline
           ./produce_release.sh
 
-
     - name: Copy dump to releases
       run: |-
           # list the /db-exports folder and sort
@@ -88,8 +98,29 @@ jobs:
           # write out the RELEASE_DB_DUMP to the environment
           echo "RELEASE_DB_DUMP=${RELEASE_DB_DUMP}" >> $GITHUB_ENV
 
-    - name: Create release
+    - name: Create GH release containing dumpfile
+      if: ${{ github.event.inputs.create_release == 'true' }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: |-
           gh release create $( date +%Y-%m-%d ) /tmp/release/${RELEASE_DB_DUMP}
+
+    - name: Create PR with the release database dump, for testing
+      if: ${{ github.event.inputs.create_release_pr == 'true' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |-
+          # create a branch, add ./db-exports/${RELEASE_DB_DUMP}
+          # and create a PR for it
+          export CURDATE=$( date +%Y-%m-%d )
+          export RELEASE_BRANCH="release-dump-${CURDATE}"
+
+          git checkout -b ${RELEASE_BRANCH}
+          git add ./db-exports/${RELEASE_DB_DUMP}
+          git commit -m "Add database dump for ${CURDATE} release"
+          git push origin ${RELEASE_BRANCH}
+
+          gh pr create \
+            --title "Release database dump for ${CURDATE}" \
+            --body "This PR contains the database dump for the ${CURDATE} release." \
+            --base ${RELEASE_BRANCH}
